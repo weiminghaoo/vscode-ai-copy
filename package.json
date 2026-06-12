@@ -1,12 +1,12 @@
 {
-  "name": "opencode-ghostty",
-  "displayName": "opencode-ghostty",
-  "description": "opencode for VS Code with Ghostty terminal integration",
-  "version": "1.14.19",
-  "publisher": "sst-dev",
+  "name": "opencode-conn",
+  "displayName": "opencode-conn",
+  "description": "opencode connector for VS Code",
+  "version": "1.0.0",
+  "publisher": "weimh",
   "repository": {
     "type": "git",
-    "url": "https://github.com/anomalyco/opencode"
+    "url": "https://github.com/weiminghaoo/opencode-conn"
   },
   "license": "MIT",
   "icon": "images/icon.png",
@@ -20,58 +20,25 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "opencode.openTerminal",
-        "title": "Open opencode",
-        "icon": {
-          "light": "images/button-dark.svg",
-          "dark": "images/button-light.svg"
-        }
+        "command": "opencode-conn.copyCommand",
+        "title": "复制 opencode 启动命令"
       },
       {
-        "command": "opencode.openNewTerminal",
-        "title": "Open opencode in new tab",
-        "icon": {
-          "light": "images/button-dark.svg",
-          "dark": "images/button-light.svg"
-        }
-      },
-      {
-        "command": "opencode.addFilepathToTerminal",
-        "title": "Add Filepath to Terminal"
+        "command": "opencode-conn.addFilepathToTerminal",
+        "title": "添加文件路径到 opencode"
       }
     ],
-    "menus": {
-      "editor/title": [
-        {
-          "command": "opencode.openNewTerminal",
-          "group": "navigation"
-        }
-      ]
-    },
+    "menus": {},
     "keybindings": [
       {
-        "command": "opencode.openTerminal",
-        "title": "Run opencode",
-        "key": "cmd+escape",
-        "mac": "cmd+escape",
-        "win": "ctrl+escape",
-        "linux": "ctrl+escape"
-      },
-      {
-        "command": "opencode.openNewTerminal",
-        "title": "Run opencode",
-        "key": "cmd+shift+escape",
-        "mac": "cmd+shift+escape",
-        "win": "ctrl+shift+escape",
-        "linux": "ctrl+shift+escape"
-      },
-      {
-        "command": "opencode.addFilepathToTerminal",
+        "command": "opencode-conn.addFilepathToTerminal",
         "title": "opencode: Insert At-Mentioned",
         "key": "cmd+alt+k",
         "mac": "cmd+alt+k",
@@ -81,28 +48,20 @@
     ]
   },
   "scripts": {
-    "vscode:prepublish": "bun run package",
-    "compile": "bun run check-types && bun run lint && node esbuild.js",
-    "watch:esbuild": "node esbuild.js --watch",
-    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "package": "bun run check-types && bun run lint && node esbuild.js --production",
-    "compile-tests": "tsc -p . --outDir out",
-    "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "bun run compile-tests && bun run compile && bun run lint",
+    "build": "npm run check-types && npm run lint && node esbuild.js",
+    "dev": "node esbuild.js --watch",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production && vsce package",
     "check-types": "tsc --noEmit",
-    "lint": "eslint src",
-    "test": "vscode-test"
+    "lint": "eslint src"
   },
   "devDependencies": {
+    "@types/node": "~20.19.43",
     "@types/vscode": "^1.94.0",
-    "@types/mocha": "^10.0.10",
-    "@types/node": "20.x",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
+    "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.25.3",
-    "typescript": "^5.8.3",
-    "@vscode/test-cli": "^0.0.11",
-    "@vscode/test-electron": "^2.5.2"
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
   }
 }

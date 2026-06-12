@@ -1,34 +1,56 @@
-# opencode VS Code Extension
+# opencode-conn VS Code Extension
 
-A Visual Studio Code extension that integrates [opencode](https://opencode.ai) directly into your development workflow.
+一个 Visual Studio Code 扩展，用于将 [opencode](https://opencode.ai) 与你的开发工作流集成。
 
-## Prerequisites
+## 功能特性
 
-This extension requires the [opencode CLI](https://opencode.ai) to be installed on your system. Visit [opencode.ai](https://opencode.ai) for installation instructions.
+- **端口管理**: 扩展启动时自动生成唯一端口号，根据项目路径缓存，确保同一项目使用相同端口
+- **状态栏显示**: 在 VS Code 状态栏显示当前端口号，点击可复制 `opencode --port xxx` 命令
+- **文件引用**: 使用快捷键快速将当前文件路径和选区添加到 opencode
 
-## Features
+## 使用方法
 
-- **Quick Launch**: Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open opencode in a split terminal view, or focus an existing terminal session if one is already running.
-- **New Session**: Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new opencode terminal session, even if one is already open. You can also click the opencode button in the UI.
-- **Context Awareness**: Automatically share your current selection or tab with opencode.
-- **File Reference Shortcuts**: Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
+### 1. 安装前置条件
 
-## Support
+确保已安装 [opencode CLI](https://opencode.ai)
 
-This is an early release. If you encounter issues or have feedback, please create an issue at https://github.com/anomalyco/opencode/issues.
+### 2. 启动 opencode
 
-## Development
+点击状态栏中的 `opencode:端口号`，复制启动命令，然后在终端中运行：
 
-1. `code sdks/vscode` - Open the `sdks/vscode` directory in VS Code. **Do not open from repo root.**
-2. `bun install` - Run inside the `sdks/vscode` directory.
-3. Press `F5` to start debugging - This launches a new VS Code window with the extension loaded.
+```bash
+opencode --port <端口号>
+```
 
-#### Making Changes
+### 3. 添加文件引用
 
-`tsc` and `esbuild` watchers run automatically during debugging (visible in the Terminal tab). Changes to the extension are automatically rebuilt in the background.
+在编辑器中打开文件并选择代码（可选），使用快捷键：
 
-To test your changes:
+- **Mac**: `Cmd+Option+K`
+- **Windows/Linux**: `Ctrl+Alt+K`
 
-1. In the debug VS Code window, press `Cmd+Shift+P`
-2. Search for `Developer: Reload Window`
-3. Reload to see your changes without restarting the debug session
+文件引用会自动添加到 opencode，格式如：
+
+- `@src/extension.ts` - 当前文件
+- `@src/extension.ts#L37` - 单行选区
+- `@src/extension.ts#L37-42` - 多行选区
+
+## 开发
+
+```bash
+# 安装依赖
+npm install
+
+# 开发模式（监听文件变化）
+npm run dev
+
+# 构建
+npm run build
+
+# 打包
+npm run package
+```
+
+## 反馈
+
+如有问题或建议，请访问 https://github.com/weiminghaoo/opencode-conn/issues 提交 issue。

@@ -1,65 +1,46 @@
-// This method is called when your extension is deactivated
-export function deactivate() {}
+import * as vscode from 'vscode'
 
-import * as vscode from "vscode"
-import { spawn } from "child_process"
-
-const TERMINAL_NAME = "opencode"
+let port: number
+let statusBarItem: vscode.StatusBarItem
 
 export function activate(context: vscode.ExtensionContext) {
-  const openNewTerminalDisposable = vscode.commands.registerCommand("opencode.openNewTerminal", async () => {
-    await openTerminal()
+  // 获取当前项目路径
+  const workspaceFolders = vscode.workspace.workspaceFolders
+  if (!workspaceFolders || workspaceFolders.length === 0) {
+    vscode.window.showWarningMessage('请先打开一个工作区')
+    return
+  }
+
+  const projectPath = workspaceFolders[0].uri.fsPath
+  const portKey = `opencode-port-${projectPath}`
+
+  // 从全局状态获取或生成端口号
+  const cachedPort = context.globalState.get<number>(portKey)
+  if (cachedPort) {
+    port = cachedPort
+  } else {
+    // 生成新的唯一端口号
+    port = generateUniquePort(context.globalState)
+    context.globalState.update(portKey, port)
+  }
+  console.log('opencode port:', port)
+
+  // 创建状态栏项
+  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
+  statusBarItem.text = `$(terminal) opencode:${port}`
+  statusBarItem.tooltip = '点击复制 opencode 启动命令'
+  statusBarItem.command = 'opencode-conn.copyCommand'
+  statusBarItem.show()
+
+  // 复制命令
+  const copyCommandDisposable = vscode.commands.registerCommand('opencode-conn.copyCommand', async () => {
+    const command = `opencode --port ${port}`
+    await vscode.env.clipboard.writeText(command)
+    vscode.window.showInformationMessage(`已复制: ${command}`)
   })
 
-  const openTerminalDisposable = vscode.commands.registerCommand("opencode.openTerminal", async () => {
-    // An opencode terminal already exists => focus it
-    const existingTerminal = vscode.window.terminals.find((t) => t.name === TERMINAL_NAME)
-    if (existingTerminal) {
-      existingTerminal.show()
-      return
-    }
-
-    await openTerminal()
-  })
-
-  let addFilepathDisposable = vscode.commands.registerCommand("opencode.addFilepathToTerminal", async () => {
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
-
-    const terminal = vscode.window.activeTerminal
-    if (!terminal) {
-      return
-    }
-
-    if (terminal.name === TERMINAL_NAME) {
-      // @ts-ignore
-      const port = terminal.creationOptions.env?.["_EXTENSION_OPENCODE_PORT"]
-      port ? await appendPrompt(parseInt(port), fileRef) : terminal.sendText(fileRef, false)
-      terminal.show()
-    }
-  })
-
-  context.subscriptions.push(openNewTerminalDisposable, openTerminalDisposable, addFilepathDisposable)
-
-  async function openTerminal() {
-    // Create a new terminal in split screen
-    const port = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
-    
-    // Launch opencode in ghostty terminal
-    const ghostty = spawn("ghostty", ["-e", "opencode", "--port", port.toString()], {
-      env: {
-        ...process.env,
-        _EXTENSION_OPENCODE_PORT: port.toString(),
-        OPENCODE_CALLER: "vscode",
-      },
-      detached: true,
-    })
-
-    // Unref the child process so it doesn't prevent VS Code from exiting
-    ghostty.unref()
-
+  // 添加文件路径到终端
+  let addFilepathDisposable = vscode.commands.registerCommand('opencode-conn.addFilepathToTerminal', async () => {
     const fileRef = getActiveFile()
     if (!fileRef) {
       return
@@ -83,50 +64,80 @@ export function activate(context: vscode.ExtensionContext) {
     if (connected) {
       await appendPrompt(port, `In ${fileRef}`)
     }
+  })
+
+  context.subscriptions.push(copyCommandDisposable, addFilepathDisposable, statusBarItem)
+}
+
+async function appendPrompt(port: number, text: string) {
+  await fetch(`http://localhost:${port}/tui/append-prompt`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ text }),
+  })
+}
+
+function getActiveFile() {
+  const activeEditor = vscode.window.activeTextEditor
+  if (!activeEditor) {
+    return
   }
 
-  async function appendPrompt(port: number, text: string) {
-    await fetch(`http://localhost:${port}/tui/append-prompt`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ text }),
-    })
+  const document = activeEditor.document
+  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
+  if (!workspaceFolder) {
+    return
   }
 
-  function getActiveFile() {
-    const activeEditor = vscode.window.activeTextEditor
-    if (!activeEditor) {
-      return
+  // Get the relative path from workspace root
+  const relativePath = vscode.workspace.asRelativePath(document.uri)
+  let filepathWithAt = `@${relativePath}`
+
+  // Check if there's a selection and add line numbers
+  const selection = activeEditor.selection
+  if (!selection.isEmpty) {
+    // Convert to 1-based line numbers
+    const startLine = selection.start.line + 1
+    const endLine = selection.end.line + 1
+
+    if (startLine === endLine) {
+      // Single line selection
+      filepathWithAt += `#L${startLine}`
+    } else {
+      // Multi-line selection
+      filepathWithAt += `#L${startLine}-${endLine}`
     }
+  }
 
-    const document = activeEditor.document
-    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
-    if (!workspaceFolder) {
-      return
-    }
+  return filepathWithAt
+}
 
-    // Get the relative path from workspace root
-    const relativePath = vscode.workspace.asRelativePath(document.uri)
-    let filepathWithAt = `@${relativePath}`
+function generateUniquePort(globalState: vscode.Memento): number {
+  // 获取所有已使用的端口
+  const allKeys = globalState.keys()
+  const usedPorts = new Set<number>()
 
-    // Check if there's a selection and add line numbers
-    const selection = activeEditor.selection
-    if (!selection.isEmpty) {
-      // Convert to 1-based line numbers
-      const startLine = selection.start.line + 1
-      const endLine = selection.end.line + 1
-
-      if (startLine === endLine) {
-        // Single line selection
-        filepathWithAt += `#L${startLine}`
-      } else {
-        // Multi-line selection
-        filepathWithAt += `#L${startLine}-${endLine}`
+  for (const key of allKeys) {
+    if (key.startsWith('opencode-port-')) {
+      const port = globalState.get<number>(key)
+      if (port) {
+        usedPorts.add(port)
       }
     }
-
-    return filepathWithAt
   }
+
+  // 生成唯一的端口号
+  let newPort: number
+  do {
+    newPort = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
+  } while (usedPorts.has(newPort))
+
+  return newPort
+}
+
+// This method is called when your extension is deactivated
+export function deactivate() {
+  statusBarItem?.dispose()
 }
