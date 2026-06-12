@@ -50,7 +50,8 @@
   "scripts": {
     "build": "npm run check-types && npm run lint && node esbuild.js",
     "dev": "node esbuild.js --watch",
-    "package": "npm run check-types && npm run lint && node esbuild.js --production && vsce package",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production && npm run vsix",
+    "vsix": "vsce package --no-git-tag-version --no-update-package-json --no-dependencies --skip-license -o dist/opencode-conn.vsix",
     "check-types": "tsc --noEmit",
     "lint": "eslint src"
   },
