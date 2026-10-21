@@ -27,8 +27,8 @@ export function activate(context: vscode.ExtensionContext) {
 
   // 创建状态栏项
   statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
-  statusBarItem.text = `$(terminal) opencode:${port}`
-  statusBarItem.tooltip = '点击复制 opencode 启动命令'
+  statusBarItem.text = `$(terminal) oc:${port}`
+  statusBarItem.tooltip = `复制 opencode[${port}] 启动命令`
   statusBarItem.command = 'opencode-conn.copyCommand'
   statusBarItem.show()
 
@@ -45,20 +45,20 @@ export function activate(context: vscode.ExtensionContext) {
     if (!fileRef) {
       return
     }
-
+      await vscode.env.clipboard.writeText(fileRef)
+      vscode.window.showInformationMessage(`已复制文件路径`)
     // Wait for the terminal to be ready
-    let tries = 10
+    let tries = 3
     let connected = false
     do {
-      await new Promise((resolve) => setTimeout(resolve, 200))
       try {
         await fetch(`http://localhost:${port}/app`)
         connected = true
         break
       } catch {}
-
+      await new Promise((resolve) => setTimeout(resolve, 20))
       tries--
-    } while (tries > 0)
+    } while (tries > 0)''
 
     // If connected, append the prompt to the terminal
     if (connected) {
