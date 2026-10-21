@@ -1,39 +1,35 @@
-# opencode-conn VS Code Extension
+# AI Copy VS Code Extension
 
-一个 Visual Studio Code 扩展，用于将 [opencode](https://opencode.ai) 与你的开发工作流集成。
+一个极简的 VS Code 扩展：把当前文件 / 选区快速复制成 AI 工具（Claude Code、Codex、ChatGPT 等）可直接识别的代码引用。
 
 ## 功能特性
 
-- **端口管理**: 扩展启动时自动生成唯一端口号，根据项目路径缓存，确保同一项目使用相同端口
-- **状态栏显示**: 在 VS Code 状态栏显示当前端口号，点击可复制 `opencode --port xxx` 命令
-- **文件引用**: 使用快捷键快速将当前文件路径和选区添加到 opencode
+- **一键复制引用**：快捷键或右键菜单，复制 `@路径` 形式的代码引用
+- **自动带上行号**：选中代码后复制会带上行号范围，方便 AI 精确定位
+- **可自定义快捷键**：通过设置项配置，自动同步到 VS Code
 
 ## 使用方法
 
-### 1. 安装前置条件
+### 复制引用
 
-确保已安装 [opencode CLI](https://opencode.ai)
+在编辑器中打开文件（可选中代码），然后：
 
-### 2. 启动 opencode
+- 使用快捷键（默认 **Mac** `Cmd+Option+K`，**Windows/Linux** `Ctrl+Alt+K`）
+- 或在编辑器中右键选择 **Copy AI Reference**
 
-点击状态栏中的 `opencode:端口号`，复制启动命令，然后在终端中运行：
+复制结果格式：
 
-```bash
-opencode --port <端口号>
-```
+| 场景 | 结果 |
+| --- | --- |
+| 未选中 | `@src/extension.ts` |
+| 选中单行 | `@src/extension.ts#L37` |
+| 选中多行 | `@src/extension.ts#L37-42` |
 
-### 3. 添加文件引用
+### 自定义快捷键
 
-在编辑器中打开文件并选择代码（可选），使用快捷键：
+在设置中搜索 `ai-copy.keybinding`，填写 VS Code 快捷键语法（如 `cmd+shift+c`）。
 
-- **Mac**: `Cmd+Option+K`
-- **Windows/Linux**: `Ctrl+Alt+K`
-
-文件引用会自动添加到 opencode，格式如：
-
-- `@src/extension.ts` - 当前文件
-- `@src/extension.ts#L37` - 单行选区
-- `@src/extension.ts#L37-42` - 多行选区
+修改后扩展会把它写进你的 `keybindings.json`，右键菜单里也会同步显示当前快捷键。
 
 ## 开发
 
@@ -53,4 +49,4 @@ npm run package
 
 ## 反馈
 
-如有问题或建议，请访问 https://github.com/weiminghaoo/opencode-conn/issues 提交 issue。
+如有问题或建议，请访问 https://github.com/weiminghaoo/vscode-ai-copy/issues 提交 issue。

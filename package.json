@@ -1,12 +1,12 @@
 {
-  "name": "opencode-conn",
-  "displayName": "opencode-conn",
-  "description": "opencode connector for VS Code",
+  "name": "ai-copy",
+  "displayName": "AI Copy",
+  "description": "快速复制 AI 可用的代码引用（@文件#行号）",
   "version": "1.0.0",
   "publisher": "weimh",
   "repository": {
     "type": "git",
-    "url": "https://github.com/weiminghaoo/opencode-conn"
+    "url": "https://github.com/weiminghaoo/vscode-ai-copy"
   },
   "license": "MIT",
   "icon": "images/icon.png",
@@ -27,33 +27,40 @@
   "contributes": {
     "commands": [
       {
-        "command": "opencode-conn.copyCommand",
-        "title": "复制 opencode 启动命令"
-      },
-      {
-        "command": "opencode-conn.addFilepathToTerminal",
-        "title": "添加文件路径到 opencode"
+        "command": "ai-copy.copyReference",
+        "title": "Copy AI Reference"
       }
     ],
-    "menus": {},
-    "keybindings": [
-      {
-        "command": "opencode-conn.addFilepathToTerminal",
-        "title": "opencode: Insert At-Mentioned",
-        "key": "cmd+alt+k",
-        "mac": "cmd+alt+k",
-        "win": "ctrl+alt+K",
-        "linux": "ctrl+alt+K"
+    "menus": {
+      "editor/context": [
+        {
+          "command": "ai-copy.copyReference",
+          "group": "9_cutcopypaste@1",
+          "when": "editorTextFocus"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "AI Copy",
+      "properties": {
+        "ai-copy.keybinding": {
+          "type": "string",
+          "default": "cmd+alt+k",
+          "markdownDescription": "「Copy AI Reference」的快捷键。修改后会自动写入 VS Code 的 `keybindings.json`，右键菜单中也会显示该快捷键。非 macOS 平台会自动把 `cmd` 映射为 `ctrl`。"
+        }
       }
-    ]
+    }
   },
   "scripts": {
     "build": "npm run check-types && npm run lint && node esbuild.js",
     "dev": "node esbuild.js --watch",
     "package": "npm run check-types && npm run lint && node esbuild.js --production && npm run vsix",
-    "vsix": "vsce package --no-git-tag-version --no-update-package-json --no-dependencies --skip-license -o dist/opencode-conn.vsix",
+    "vsix": "vsce package --no-git-tag-version --no-update-package-json --no-dependencies --skip-license -o dist/ai-copy.vsix",
     "check-types": "tsc --noEmit",
     "lint": "eslint src"
+  },
+  "dependencies": {
+    "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "~20.19.43",

@@ -1,143 +1,131 @@
+import * as fs from 'fs'
+import * as path from 'path'
 import * as vscode from 'vscode'
+import * as jsonc from 'jsonc-parser'
 
-let port: number
-let statusBarItem: vscode.StatusBarItem
+const COMMAND_ID = 'ai-copy.copyReference'
+const CONFIG_KEYBINDING = 'keybinding'
+const DEFAULT_KEYBINDING = 'cmd+alt+k'
 
 export function activate(context: vscode.ExtensionContext) {
-  // 获取当前项目路径
-  const workspaceFolders = vscode.workspace.workspaceFolders
-  if (!workspaceFolders || workspaceFolders.length === 0) {
-    vscode.window.showWarningMessage('请先打开一个工作区')
-    return
-  }
+  context.subscriptions.push(vscode.commands.registerCommand(COMMAND_ID, copyReference))
 
-  const projectPath = workspaceFolders[0].uri.fsPath
-  const portKey = `opencode-port-${projectPath}`
-
-  // 从全局状态获取或生成端口号
-  const cachedPort = context.globalState.get<number>(portKey)
-  if (cachedPort) {
-    port = cachedPort
-  } else {
-    // 生成新的唯一端口号
-    port = generateUniquePort(context.globalState)
-    context.globalState.update(portKey, port)
-  }
-  console.log('opencode port:', port)
-
-  // 创建状态栏项
-  statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100)
-  statusBarItem.text = `$(terminal) oc:${port}`
-  statusBarItem.tooltip = `复制 opencode[${port}] 启动命令`
-  statusBarItem.command = 'opencode-conn.copyCommand'
-  statusBarItem.show()
-
-  // 复制命令
-  const copyCommandDisposable = vscode.commands.registerCommand('opencode-conn.copyCommand', async () => {
-    const command = `opencode --port ${port}`
-    await vscode.env.clipboard.writeText(command)
-    vscode.window.showInformationMessage(`已复制: ${command}`)
-  })
-
-  // 添加文件路径到终端
-  let addFilepathDisposable = vscode.commands.registerCommand('opencode-conn.addFilepathToTerminal', async () => {
-    const fileRef = getActiveFile()
-    if (!fileRef) {
-      return
-    }
-      await vscode.env.clipboard.writeText(fileRef)
-      vscode.window.showInformationMessage(`已复制文件路径`)
-    // Wait for the terminal to be ready
-    let tries = 3
-    let connected = false
-    do {
-      try {
-        await fetch(`http://localhost:${port}/app`)
-        connected = true
-        break
-      } catch {}
-      await new Promise((resolve) => setTimeout(resolve, 20))
-      tries--
-    } while (tries > 0)''
-
-    // If connected, append the prompt to the terminal
-    if (connected) {
-      await appendPrompt(port, `In ${fileRef}`)
-    }
-  })
-
-  context.subscriptions.push(copyCommandDisposable, addFilepathDisposable, statusBarItem)
+  // 把自定义快捷键同步到用户 keybindings.json，让右键菜单能显示出来
+  syncKeybinding(context).catch((error) => console.error(error))
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('ai-copy.keybinding')) {
+        syncKeybinding(context).catch((error) => console.error(error))
+      }
+    }),
+  )
 }
 
-async function appendPrompt(port: number, text: string) {
-  await fetch(`http://localhost:${port}/tui/append-prompt`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ text }),
-  })
+/**
+ * 复制当前编辑器（或右键选中的文件）的 AI 引用。
+ * 格式：@相对路径 / @相对路径#L12 / @相对路径#L12-30
+ */
+async function copyReference(resource?: vscode.Uri) {
+  const reference = buildReference(resource)
+  if (!reference) {
+    vscode.window.showWarningMessage('AI Copy: 没有可引用的文件')
+    return
+  }
+
+  await vscode.env.clipboard.writeText(reference)
+  vscode.window.showInformationMessage(`已复制: ${reference}`)
 }
 
-function getActiveFile() {
-  const activeEditor = vscode.window.activeTextEditor
-  if (!activeEditor) {
-    return
-  }
+function buildReference(resource?: vscode.Uri): string | undefined {
+  const editor = vscode.window.activeTextEditor
 
-  const document = activeEditor.document
-  const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri)
-  if (!workspaceFolder) {
-    return
-  }
+  // 优先使用当前编辑器，这样能带上选区行号
+  if (editor) {
+    const base = refFromUri(editor.document.uri)
+    if (!base) {
+      return undefined
+    }
 
-  // Get the relative path from workspace root
-  const relativePath = vscode.workspace.asRelativePath(document.uri)
-  let filepathWithAt = `@${relativePath}`
+    const selection = editor.selection
+    if (selection.isEmpty) {
+      return base
+    }
 
-  // Check if there's a selection and add line numbers
-  const selection = activeEditor.selection
-  if (!selection.isEmpty) {
-    // Convert to 1-based line numbers
     const startLine = selection.start.line + 1
     const endLine = selection.end.line + 1
-
-    if (startLine === endLine) {
-      // Single line selection
-      filepathWithAt += `#L${startLine}`
-    } else {
-      // Multi-line selection
-      filepathWithAt += `#L${startLine}-${endLine}`
-    }
+    return startLine === endLine ? `${base}#L${startLine}` : `${base}#L${startLine}-${endLine}`
   }
 
-  return filepathWithAt
+  // 回退：右键菜单传入的文件
+  return resource ? refFromUri(resource) : undefined
 }
 
-function generateUniquePort(globalState: vscode.Memento): number {
-  // 获取所有已使用的端口
-  const allKeys = globalState.keys()
-  const usedPorts = new Set<number>()
+function refFromUri(uri: vscode.Uri): string | undefined {
+  if (!vscode.workspace.getWorkspaceFolder(uri)) {
+    return undefined
+  }
+  return `@${vscode.workspace.asRelativePath(uri)}`
+}
 
-  for (const key of allKeys) {
-    if (key.startsWith('opencode-port-')) {
-      const port = globalState.get<number>(key)
-      if (port) {
-        usedPorts.add(port)
-      }
-    }
+/** 把 cmd 翻译成 ctrl，保持 mac 与 win/linux 一致的默认手感 */
+function resolveKeybinding(value: string): string {
+  if (process.platform === 'darwin') {
+    return value
+  }
+  return value.replace(/\bcmd\b/gi, 'ctrl')
+}
+
+function getKeybindingsPath(context: vscode.ExtensionContext): string {
+  // globalStorageUri 形如 <userData>/User/globalStorage/<publisher>.<name>
+  const userDir = path.dirname(path.dirname(context.globalStorageUri.fsPath))
+  return path.join(userDir, 'keybindings.json')
+}
+
+/** 维护 keybindings.json 中归属本插件的那一条快捷键 */
+async function syncKeybinding(context: vscode.ExtensionContext) {
+  const configured = vscode.workspace
+    .getConfiguration('ai-copy')
+    .get<string>(CONFIG_KEYBINDING, DEFAULT_KEYBINDING)
+  const keybinding = resolveKeybinding((configured || DEFAULT_KEYBINDING).trim())
+
+  const filePath = getKeybindingsPath(context)
+
+  let text = '[]'
+  try {
+    text = await fs.promises.readFile(filePath, 'utf8')
+  } catch {
+    // 文件不存在时按空数组处理
+  }
+  if (!text.trim()) {
+    text = '[]'
   }
 
-  // 生成唯一的端口号
-  let newPort: number
-  do {
-    newPort = Math.floor(Math.random() * (65535 - 16384 + 1)) + 16384
-  } while (usedPorts.has(newPort))
+  const errors: jsonc.ParseError[] = []
+  const parsed = jsonc.parse(text, errors, { allowTrailingComma: true }) as unknown
+  if (errors.length > 0 || !Array.isArray(parsed)) {
+    vscode.window.showWarningMessage('AI Copy: keybindings.json 解析失败，已跳过快捷键同步')
+    return
+  }
 
-  return newPort
-}
+  const entries = parsed as Array<Record<string, unknown>>
+  const index = entries.findIndex((entry) => entry?.command === COMMAND_ID)
+  const desired = { key: keybinding, command: COMMAND_ID }
 
-// This method is called when your extension is deactivated
-export function deactivate() {
-  statusBarItem?.dispose()
+  if (
+    index >= 0 &&
+    entries[index].key === keybinding &&
+    Object.keys(entries[index]).length === Object.keys(desired).length
+  ) {
+    return
+  }
+
+  const edits = jsonc.modify(text, [index >= 0 ? index : entries.length], desired, {
+    formattingOptions: { insertSpaces: true, tabSize: 2 },
+  })
+  const updated = jsonc.applyEdits(text, edits)
+  if (updated === text) {
+    return
+  }
+
+  await fs.promises.writeFile(filePath, updated, 'utf8')
 }
