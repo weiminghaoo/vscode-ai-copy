@@ -40,13 +40,25 @@
         }
       ]
     },
+    "keybindings": [
+      {
+        "command": "ai-copy.copyReference",
+        "title": "AI Copy: Copy AI Reference",
+        "key": "cmd+alt+k",
+        "mac": "cmd+alt+k",
+        "win": "ctrl+alt+k",
+        "linux": "ctrl+alt+k",
+        "when": "!ai-copy.customKeybinding"
+      }
+    ],
     "configuration": {
       "title": "AI Copy",
       "properties": {
         "ai-copy.keybinding": {
           "type": "string",
-          "default": "cmd+alt+k",
-          "markdownDescription": "「Copy AI Reference」的快捷键。修改后会自动写入 VS Code 的 `keybindings.json`，右键菜单中也会显示该快捷键。非 macOS 平台会自动把 `cmd` 映射为 `ctrl`。"
+          "default": "",
+          "scope": "window",
+          "markdownDescription": "自定义「Copy AI Reference」的快捷键。留空使用插件默认值：macOS `cmd+alt+k`，Windows/Linux `ctrl+alt+k`。\n\n填写后会自动写入 VS Code 的 `keybindings.json`（非 macOS 平台会自动把 `cmd` 映射为 `ctrl`），编辑器右键菜单中也会显示该快捷键。"
         }
       }
     }
@@ -58,9 +70,6 @@
     "vsix": "vsce package --no-git-tag-version --no-update-package-json --no-dependencies --skip-license -o dist/ai-copy.vsix",
     "check-types": "tsc --noEmit",
     "lint": "eslint src"
-  },
-  "dependencies": {
-    "jsonc-parser": "^3.3.1"
   },
   "devDependencies": {
     "@types/node": "~20.19.43",

@@ -19,17 +19,20 @@
 
 复制结果格式：
 
-| 场景 | 结果 |
-| --- | --- |
-| 未选中 | `@src/extension.ts` |
-| 选中单行 | `@src/extension.ts#L37` |
+| 场景     | 结果                       |
+| -------- | -------------------------- |
+| 未选中   | `@src/extension.ts`        |
+| 选中单行 | `@src/extension.ts#L37`    |
 | 选中多行 | `@src/extension.ts#L37-42` |
 
 ### 自定义快捷键
 
-在设置中搜索 `ai-copy.keybinding`，填写 VS Code 快捷键语法（如 `cmd+shift+c`）。
+在设置中搜索 `ai-copy.keybinding`，填写 VS Code 快捷键语法，例如：
 
-修改后扩展会把它写进你的 `keybindings.json`，右键菜单里也会同步显示当前快捷键。
+- macOS：`cmd+shift+c`
+- Windows/Linux：`ctrl+shift+c`
+
+留空则使用默认值（macOS `cmd+alt+k`，Windows/Linux `ctrl+alt+k`）。填写后扩展会把它写进你的 `keybindings.json`，右键菜单里也会同步显示当前快捷键；清空设置则会移除该条并恢复默认绑定。
 
 ## 开发
 
